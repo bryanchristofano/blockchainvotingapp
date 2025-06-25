@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Ballot Voting DApp</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    
+    .container {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    
+    .header {
+      text-align: center;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+    
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    
+    .wallet-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    
+    .account-selector {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      background: white;
+      min-width: 150px;
+    }
+    
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 20px;
+    }
+    
+    .section {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      border-left: 4px solid #667eea;
+    }
+    
+    .chairperson-section {
+      border-left-color: #e74c3c;
+      background: #fdf2f2;
+    }
+    
+    .voting-section {
+      border-left-color: #27ae60;
+    }
+    
+    .voting-section.disabled {
+      border-left-color: #95a5a6;
+      background: #f8f9fa;
+      opacity: 0.6;
+    }
+    
+    .info-section {
+      border-left-color: #f39c12;
+    }
+    
+    input[type="text"], input[type="number"], select {
+      width: 100%;
+      padding: 10px;
+      margin: 5px 0 15px 0;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      box-sizing: border-box;
+    }
+    
+    button {
+      background: #667eea;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 5px;
+      transition: background 0.3s;
+    }
+    
+    button:hover:not(:disabled) {
+      background: #5a67d8;
+    }
+    
+    button:disabled {
+      background: #bdc3c7;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+    
+    .connect-btn {
+      background: #27ae60;
+      font-size: 16px;
+      padding: 12px 25px;
+    }
+    
+    .connect-btn:hover:not(:disabled) {
+      background: #219a52;
+    }
+    
+    .chairperson-btn {
+      background: #e74c3c;
+    }
+    
+    .chairperson-btn:hover:not(:disabled) {
+      background: #c0392b;
+    }
+    
+    .proposal-item {
+      background: #f8f9fa;
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 5px;
+      border-left: 3px solid #667eea;
+    }
+    
+    .vote-count {
+      color: #667eea;
+      font-weight: bold;
+    }
+    
+    #votingStatus {
+      font-size: 18px;
+      font-weight: bold;
+    }
+    
+    .voting-open {
+      color: #27ae60;
+    }
+    
+    .voting-closed {
+      color: #e74c3c;
+    }
+    
+    #chairpersonInfo {
+      color: #27ae60;
+      font-weight: bold;
+    }
+    
+    .result {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 5px;
+      margin-top: 10px;
+      min-height: 20px;
+      word-wrap: break-word;
+      word-break: break-all;
+      overflow-wrap: break-word;
+    }
+    
+    .voting-disabled-notice {
+      background: #fff3cd;
+      color: #856404;
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 15px;
+      border: 1px solid #ffeaa7;
+      display: none;
+    }
+
+    .current-account {
+      background: #e8f5e8;
+      padding: 8px;
+      border-radius: 5px;
+      font-weight: bold;
+      color: #27ae60;
+      font-size: 12px;
+    }
+
+    .proposals-list {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .voter-info-item {
+      margin-bottom: 8px;
+      padding: 8px;
+      background: #f8f9fa;
+      border-radius: 4px;
+      border-left: 3px solid #667eea;
+    }
+
+    .voter-info-label {
+      font-weight: bold;
+      color: #333;
+      display: inline-block;
+      min-width: 80px;
+    }
+
+    .voter-info-value {
+      color: #555;
+      word-wrap: break-word;
+      word-break: break-all;
+      overflow-wrap: break-word;
+    }
+
+    .address-display {
+      font-family: monospace;
+      font-size: 12px;
+      background: #e9ecef;
+      padding: 4px 6px;
+      border-radius: 3px;
+      word-wrap: break-word;
+      word-break: break-all;
+      overflow-wrap: break-word;
+      display: block;
+      margin-top: 4px;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .status-voted {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status-not-voted {
+      background: #f8d7da;
+      color: #721c24;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Blockchain Based Voting App</h1>
+    <p>Decentralized Voting System</p>
+  </div>
+
+  <div class="status-bar">
+    <div class="wallet-controls">
+      <button class="connect-btn" id="connectBtn" onclick="connectWallet()">🔌 Connect Wallet</button>
+      <select id="accountSelector" class="account-selector" onchange="switchAccount()" style="display: none;">
+        <option value="">Select Account...</option>
+      </select>
+      <div class="current-account" id="currentAccount" style="display: none;"></div>
+    </div>
+    <div>
+      <span id="votingStatus">Voting Status: Unknown</span>
+    </div>
+  </div>
+
+  <!-- Chairperson Controls -->
+  <div id="chairpersonControls" class="container chairperson-section" style="display: none;">
+    <div id="chairpersonInfo"></div>
+    <h3>👑 Chairperson Controls</h3>
+    
+    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+      <button class="chairperson-btn" onclick="openVoting()">🟢 Open Voting</button>
+      <button class="chairperson-btn" onclick="closeVoting()">🔴 Close Voting</button>
+    </div>
+    
+    <h4>🎫 Give Right to Vote</h4>
+    <input type="text" id="voterAddress" placeholder="Enter Voter Address (0x...)">
+    <button onclick="giveRightToVote()">Grant Voting Rights</button>
+  </div>
+
+  <div class="grid">
+    <div class="section voting-section" id="votingSection">
+      <h3>🗳️ Voting Actions</h3>
+      
+      <div class="voting-disabled-notice" id="votingDisabledNotice">
+        ⚠️ Voting is currently closed. Only the chairperson can open voting.
+      </div>
+      
+      <h4>Vote for Proposal</h4>
+      <select id="proposalId" class="voting-action">
+        <option value="">Select a proposal...</option>
+      </select>
+      <button class="voting-action" id="voteBtn" onclick="vote()">Cast Vote</button>
+      
+      <h4>📨 Delegate Vote</h4>
+      <input type="text" id="delegateTo" placeholder="Delegate to Address (0x...)" class="voting-action">
+      <button class="voting-action" id="delegateBtn" onclick="delegateVote()">Delegate Vote</button>
+    </div>
+
+    <div class="section info-section">
+      <h3>📊 Results & Information</h3>
+      
+      <h4>🏆 Current Winner</h4>
+      <button onclick="getWinner()">Show Winner</button>
+      <div id="winner" class="result"></div>
+      
+      <h4>📋 All Proposals</h4>
+      <button onclick="getAllProposals()">Load All Proposals</button>
+      <div id="allProposals" class="result"></div>
+    </div>
+
+    <div class="section info-section">
+      <h3>🔍 Proposal Lookup</h3>
+      <input type="number" id="proposalIndex" placeholder="Proposal ID (e.g. 0)">
+      <button onclick="getProposal()">Get Proposal Info</button>
+      <div id="proposalInfo" class="result"></div>
+    </div>
+
+    <div class="section info-section">
+      <h3>👤 Voter Lookup</h3>
+      <input type="text" id="voterLookup" placeholder="Voter Address (0x...)">
+      <button onclick="getVoter()">Get Voter Info</button>
+      <div id="voterInfo" class="result"></div>
+    </div>
+  </div>
+
+  <div class="container">
+    <h3>ℹ️ How to Use</h3>
+    <ol>
+      <li><strong>Connect Wallet:</strong> Click "Connect Wallet" to connect your MetaMask</li>
+      <li><strong>Switch Accounts:</strong> Use the dropdown to switch between different accounts</li>
+      <li><strong>Chairperson:</strong> If you're the chairperson, you can open/close voting and give voting rights</li>
+      <li><strong>Vote:</strong> Select a proposal and click "Cast Vote" (only when voting is open)</li>
+      <li><strong>Delegate:</strong> You can delegate your vote to another address (only when voting is open)</li>
+      <li><strong>Results:</strong> View current winner and all proposal vote counts</li>
+    </ol>
+  </div>
+
+  <script src="appV5.js"></script>
+</body>
+</html>
